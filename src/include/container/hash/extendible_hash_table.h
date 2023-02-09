@@ -110,7 +110,7 @@ class ExtendibleHashTable {
    * @param dir_page to use for lookup of global depth
    * @return the directory index
    */
-  inline uint32_t KeyToDirectoryIndex(KeyType key, HashTableDirectoryPage *dir_page);
+  uint32_t KeyToDirectoryIndex(KeyType key, HashTableDirectoryPage *dir_page);
 
   /**
    * Get the bucket page_id corresponding to a key.
@@ -119,7 +119,7 @@ class ExtendibleHashTable {
    * @param dir_page a pointer to the hash table's directory page
    * @return the bucket page_id corresponding to the input key
    */
-  inline uint32_t KeyToPageId(KeyType key, HashTableDirectoryPage *dir_page);
+  page_id_t KeyToPageId(KeyType key, HashTableDirectoryPage *dir_page);
 
   /**
    * Fetches the directory page from the buffer pool manager.
@@ -134,10 +134,13 @@ class ExtendibleHashTable {
    * @param bucket_page_id the page_id to fetch
    * @return a pointer to a bucket page
    */
-  HASH_TABLE_BUCKET_TYPE *FetchBucketPage(page_id_t bucket_page_id);
+  Page *FetchBucketPage(page_id_t bucket_page_id);
+  HASH_TABLE_BUCKET_TYPE *GetBucketPageData(Page *page);
 
   /**
-   * Performs insertion with an optional bucket splitting.
+   * Performs insertion with an optional bucket splitting.  If the
+   * page is still full after the split, then recursively split.
+   * This is exceedingly rare, but possible.
    *
    * @param transaction a pointer to the current transaction
    * @param key the key to insert
@@ -155,11 +158,16 @@ class ExtendibleHashTable {
    * 2. The bucket has local depth 0.
    * 3. The bucket's local depth doesn't match its split image's local depth.
    *
+   * Note: we do not merge recursively.
+   *
    * @param transaction a pointer to the current transaction
    * @param key the key that was removed
    * @param value the value that was removed
    */
-  void Merge(Transaction *transaction, const KeyType &key, const ValueType &value);
+  void Merge(Transaction *transaction, uint32_t target_bucket_index);
+
+  // 创建Directory的锁
+  std::mutex driectory_lock_;
 
   // member variables
   page_id_t directory_page_id_;
